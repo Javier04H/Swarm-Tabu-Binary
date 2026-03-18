@@ -1,0 +1,35 @@
+Análisis de los cambios en jBGWO2.m (Binary GWO) respecto al GWO original
+
+Este documento detalla las modificaciones realizadas al algoritmo Grey Wolf Optimizer (GWO) original para convertirlo en su versión binaria (jBGWO2), diseñada específicamente para la selección de características.
+
+1. Inicialización de la Población (Agentes)
+   - GWO Original: Inicializa las posiciones de los lobos con valores continuos aleatorios dentro de los límites inferior (lb) y superior (ub).
+   - jBGWO2: Inicializa las posiciones (matriz X) directamente con valores binarios (0 o 1). Si un número aleatorio es mayor a 0.5, la posición es 1, de lo contrario es 0.
+
+2. Actualización de Posiciones (Núcleo de la Binarización)
+   - GWO Original: Calcula la nueva posición como el promedio simple de las posiciones propuestas por Alpha, Beta y Delta:
+     Posición = (X1 + X2 + X3) / 3
+     Esto resulta en valores continuos que pueden salir del rango [0,1].
+
+   - jBGWO2: Introduce una Función de Transferencia para mapear el espacio continuo a probabilidades.
+     a. Calcula el promedio continuo 'Xn' igual que en GWO:
+        Xn = (X1 + X2 + X3) / 3
+     
+     b. Aplica una función sigmoide modificada (Función de Transferencia) a 'Xn':
+        TF = 1 / (1 + exp(-10 * (Xn - 0.5)))
+        *Nota: Esta sigmoide está desplazada (Xn - 0.5) y escalada (-10) para forzar una transición rápida alrededor de 0.5.*
+
+     c. Binarización Estocástica:
+        Se compara el valor de probabilidad TF con un número aleatorio:
+        Si TF >= rand(), la nueva posición es 1.
+        Si TF < rand(), la nueva posición es 0.
+
+3. Función de Aptitud (Fitness)
+   - GWO Original: Es genérico y acepta cualquier función objetivo pasada como argumento (fobj).
+   - jBGWO2: Está diseñado para selección de características. Utiliza una función específica `jFitnessFunction` que evalúa el subconjunto de características seleccionado (donde X(i,d) == 1).
+
+4. Salida
+   - GWO Original: Retorna la mejor puntuación, la mejor posición (coordenadas continuas) y la curva de convergencia.
+   - jBGWO2: Retorna el subconjunto de características seleccionado (sFeat), los índices de estas características (Sf), el número de características seleccionadas (Nf) y la curva de convergencia.
+
+En resumen, el cambio clave es el paso de "Actualización Continua -> Función de Transferencia -> Regla de Binarización", que permite a los lobos moverse en un espacio de búsqueda discreto [0,1] en lugar de uno continuo.
