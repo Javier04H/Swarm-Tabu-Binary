@@ -1,2 +1,2 @@
-# Hippo-Tabu-Binary
-Hippopotamus algoritm + Tabu search + Feature selection
+# SFOA-Tabu-Binary
+Starfish algoritm + Tabu search + Feature selection
