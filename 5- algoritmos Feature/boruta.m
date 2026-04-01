@@ -3,10 +3,10 @@ function [finalDecision, hitReg] = boruta(X, Y, pValue, maxRuns)
     % X: Matriz de predictores (Observaciones x Variables)
     % Y: Vector de respuesta
     % pValue: Nivel de confianza (Por defecto 0.01)
-    % maxRuns: Límite de iteraciones (Por defecto 100)
+    % maxRuns: Límite de iteraciones (Por defecto 100)%CAMBIADO A 50
     
     if nargin < 3, pValue = 0.01; end
-    if nargin < 4, maxRuns = 100; end
+    if nargin < 4, maxRuns = 50; end
     
     [nObs, nAtt] = size(X);
     
@@ -41,8 +41,10 @@ function [finalDecision, hitReg] = boruta(X, Y, pValue, maxRuns)
         % 3. Entrenar el Random Forest
         X_aug = [X_keep, X_shadow];
         
-        % Se usan 500 árboles (default de Boruta) y se extrae la importancia pura
-        Mdl = TreeBagger(500, X_aug, Y, 'Method', 'classification', ...
+        % Se usan 500 árboles (default de Boruta) y se extrae la
+        % importancia pura
+        %CAMBIE A 50 ARBOLES PARA VERIFICAR VELOCIDAD
+        Mdl = TreeBagger(50, X_aug, Y, 'Method', 'classification', ...
                          'OOBPredictorImportance', 'on');
                          
         impRaw = Mdl.OOBPermutedPredictorDeltaError;
