@@ -17,7 +17,7 @@ Curve = zeros(1,Max_it);
 Xpos = rand(Npop,nD).*(ub-lb)+lb;
 for i = 1:Npop
     %transformar a propabilidad usando Tangente Hiperbolica
-    TF = (exp(Xpos(i,:)) - exp(Xpos(i,:) * -1))./ (exp(Xpos(i,:)) + exp(Xpos(i,:) * -1)); %Transfer Fuction - toma el valor y lo mapea en un rango de 0 y 1
+    TF = tanh(Xpos(i,:)); %Transfer Fuction - toma el valor y lo mapea en un rango de 0 y 1
     %Binarizamos
     binX = TF >=rand(1,nD);
     %evaluamos la version binarizada
@@ -82,7 +82,7 @@ while T <= Max_it
     % Fitness evaluation
     for i = 1:Npop
             %transformar a propabilidad usando Tangente Hiperbolica
-        TF = (exp(Xpos(i,:)) - exp(Xpos(i,:) * -1))./ (exp(Xpos(i,:)) + exp(Xpos(i,:) * -1));
+        TF = tanh(newX(i,:));
         %Binarizamos
         binX = TF >=rand(1,nD);
         newFit = feval(fobj,binX);
@@ -101,11 +101,14 @@ while T <= Max_it
 end
 
         %Extraer las caracteristicas seleccionadas del mejor individuo
-        TF_best = (exp(Xpos(i,:)) - exp(Xpos(i,:) * -1))./ (exp(Xpos(i,:)) + exp(Xpos(i,:) * -1));
+        TF_best = tanh(xposbest);
         %Binarizamos
         bin_best = TF_best >= 0.5;
         Sf= find(bin_best == 1);%Selected Features
         Nf = length(Sf);%Number of Features
+
+
+end
         
 
 
