@@ -1,41 +1,41 @@
 function cost = fobj(binX)
-    % Función objetivo para Feature Selection con BSFOA
-    % binX: vector lógico/binario 1 x nD indicando features activas
-    %
-    % Minimiza: alpha * error_clasificacion + beta * fraccion_features
-
-    alpha = 0.99;  % peso del error (mayor = prioriza precisión)
-    beta  = 0.01;  % peso del número de features
+% Función objetivo escalar con frente de Pareto INCLINADO hacia sparse
+% Compatible con BSFOA (retorna un solo escalar)
+%
+% IMPORTANTE: Ejecutar ANTES del algoritmo (una sola vez):
+%   global X; X = zscore(X);
 
     global X Y
 
-    % Asegurar que binX sea vector fila lógico de tamaño correcto
-    binX = logical(binX(:)');          % forzar fila
+    % --- Sanidad del vector binario ---
+    binX = logical(binX(:)');
     nD   = size(X, 2);
 
-    % Recortar o rellenar si hay desajuste de dimensiones
     if length(binX) > nD
         binX = binX(1:nD);
     elseif length(binX) < nD
         binX = [binX, false(1, nD - length(binX))];
     end
 
-    % Penalización si no hay ninguna feature seleccionada
+    % --- Sin features: peor caso ---
     if sum(binX) == 0
         cost = 1;
         return;
     end
 
-    % Seleccionar columnas activas
+    % --- Clasificación KNN con Leave-One-Out ---
     X_sel = X(:, binX);
+    mdl   = fitcknn(X_sel, Y, 'NumNeighbors', 5, 'Leaveout', 'on');
+    f1    = kfoldLoss(mdl);             % error ∈ [0, 1]
 
-    % Clasificador KNN con Leave-One-Out (rápido, sin hiperparámetros extra)
-    mdl  = fitcknn(X_sel, Y, 'NumNeighbors', 5, 'Leaveout', 'on');
-    loss = kfoldLoss(mdl);   % error de clasificación ∈ [0, 1]
-
-    % Proporción de features usadas ∈ [0, 1]
+    % --- Fracción de features con penalización cuadrática ---
+    % La cuadratura INCLINA el frente: pocas features = penalización mucho menor
     feat_ratio = sum(binX) / nD;
+    f2 = feat_ratio^2;                  % ∈ [0, 1], presiona hacia soluciones sparse
 
-    % Costo total (minimizar)
-    cost = alpha * loss + beta * feat_ratio;
+    % --- Costo escalar agregado ---
+    alpha = 0.90;   % prioriza precisión
+    beta  = 0.10;   % penaliza features cuadráticamente
+    cost  = alpha * f1 + beta * f2;
+
 end

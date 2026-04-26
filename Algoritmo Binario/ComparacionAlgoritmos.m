@@ -1,4 +1,7 @@
 clc; clear; close all;
+% Normalizar UNA SOLA VEZ antes del optimizador
+global X Y
+X = zscore(X);
 
 % 1. CARGAR LOS RESULTADOS PREVIOS
 if exist('sleep_workspace.mat', 'file')
@@ -9,8 +12,8 @@ else
 end
 
 % 2. CONFIGURACIÓN DE BSFOA (Ajusta según tu necesidad)
-Npop = 10000; 
-Max_it = 100;
+Npop = 1000; 
+Max_it = 50;
 lb = -4; ub = 4; % Rango para la Tangente Hiperbólica
 HO = 0.2;
 
@@ -26,7 +29,7 @@ for iter = 1:num_iteraciones
     fprintf('  > Iteración %d de %d...\n', iter, num_iteraciones);
     
     % Ejecutar el algoritmo binarizado
-    [~, ~, ~, Sf, ~] = BSFOASig(Npop, Max_it, lb, ub, n_features, @fobj);
+    [~, ~, ~, Sf, ~] = BSFOA(Npop, Max_it, lb, ub, n_features, @fobj);
     
     % Actualizar contador de BSFOA
     support_bsfoa = false(1, n_features);
@@ -56,4 +59,3 @@ disp(TablaComparativa);
 % 4. GUARDAR TODO ACTUALIZADO
 save('resultado_completo_con_bsfoa.mat');
 disp('Resultados guardados en resultado_completo_con_bsfoa.mat');
-disp(s)
