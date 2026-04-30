@@ -1,61 +1,76 @@
 clc; clear; close all;
-% Normalizar UNA SOLA VEZ antes del optimizador
-global X Y
-X = zscore(X);
 
 % 1. CARGAR LOS RESULTADOS PREVIOS
 if exist('sleep_workspace.mat', 'file')
     load('sleep_workspace.mat');
     disp('=== 1. DATOS PREVIOS CARGADOS EXITOSAMENTE ===');
 else
-    error('No se encontró el archivo sleep_workspace.mat. Asegúrate de haber corrido los otros métodos primero.');
+    error('No se encontró el archivo sleep_workspace.mat.');
 end
 
-% 2. CONFIGURACIÓN DE BSFOA (Ajusta según tu necesidad)
-Npop = 1000; 
+% AHORA NORMALIZAMOS
+global X_train Y_train X_val Y_val nD
+X = zscore(X);
+nD = size(X, 2);
+
+% PARTICIÓN GLOBAL (70% Train, 30% Test)
+cv = cvpartition(Y, 'HoldOut', 0.3);
+X_train = X(cv.training, :);
+Y_train = Y(cv.training);
+X_val   = X(cv.test, :);
+Y_val   = Y(cv.test);
+
+% 2. CONFIGURACIÓN DE BSFOA
+Npop = 30;    
 Max_it = 50;
-lb = -4; ub = 4; % Rango para la Tangente Hiperbólica
-HO = 0.2;
+lb = -4; ub = 4;
 
-
-% Reiniciar contador de BSFOA (por si ya existía en el mat)
-cont_bsfoa = zeros(1, n_features);
+% Reiniciar contadores para ambas versiones de BSFOA
+cont_bsfoa_tree = zeros(1, nD);
+cont_bsfoa_forest = zeros(1, nD);
 
 disp(' ');
-disp('=== 2. EJECUTANDO BSFOA (Solo este método) ===');
-fprintf('Se ejecutarán %d iteraciones de BSFOA...\n', num_iteraciones);
+disp('=== 2. EJECUTANDO BSFOA: ÁRBOL SIMPLE vs MINI-FOREST ===');
+fprintf('Se ejecutarán %d iteraciones...\n', num_iteraciones);
 
 for iter = 1:num_iteraciones
     fprintf('  > Iteración %d de %d...\n', iter, num_iteraciones);
     
-    % Ejecutar el algoritmo binarizado
-    [~, ~, ~, Sf, ~] = BSFOA(Npop, Max_it, lb, ub, n_features, @fobj);
+    % --- Ejecución 1: BSFOA con Árbol Simple (@fobj) ---
+    [~, ~, ~, Sf_tree, ~] = BSFOASig(Npop, Max_it, lb, ub, nD, @fobj);
+    support_tree = false(1, nD);
+    support_tree(Sf_tree) = true;
+    cont_bsfoa_tree = cont_bsfoa_tree + support_tree;
     
-    % Actualizar contador de BSFOA
-    support_bsfoa = false(1, n_features);
-    support_bsfoa(Sf) = true;
-    cont_bsfoa = cont_bsfoa + support_bsfoa;
+    % --- Ejecución 2: BSFOA con Mini-Forest (@fobj_miniforest) ---
+    [~, ~, ~, Sf_forest, ~] = BSFOASig(Npop, Max_it, lb, ub, nD, @fobj_miniforest);
+    support_forest = false(1, nD);
+    support_forest(Sf_forest) = true;
+    cont_bsfoa_forest = cont_bsfoa_forest + support_forest;
 end
 
 % 3. CÁLCULO DE PORCENTAJES FINALES
 disp(' ');
 disp('=== 3. COMPARATIVA FINAL ===');
 
-% Calculamos el porcentaje de BSFOA
-pct_bsfoa = (cont_bsfoa / num_iteraciones) * 100;
+% Calculamos porcentajes de ambos métodos
+pct_bsfoa_tree = (cont_bsfoa_tree / num_iteraciones) * 100;
+pct_bsfoa_forest = (cont_bsfoa_forest / num_iteraciones) * 100;
 
-% Los otros porcentajes (pct_rfe, pct_boruta, pct_pi) ya están en el Workspace
-% gracias al comando 'load' del principio.
+% Asegurar que existan los otros métodos, sino columnas vacías
+if ~exist('pct_rfe', 'var'), pct_rfe = zeros(1,nD); end
+if ~exist('pct_boruta', 'var'), pct_boruta = zeros(1,nD); end
+if ~exist('pct_pi', 'var'), pct_pi = zeros(1,nD); end
+if ~exist('nombres_features', 'var'), nombres_features = string(1:nD); end
 
-% Crear Tabla Comparativa Final
-TablaComparativa = table(nombres_features', pct_rfe', pct_boruta', pct_pi', pct_bsfoa', ...
-    'VariableNames', {'Caracteristica', 'RFE_Pct', 'Boruta_Pct', 'PermImportance_Pct', 'BSFOA_Pct'});
+% Crear la tabla agregando la nueva columna del Mini-Forest
+TablaComparativa = table(nombres_features', pct_rfe', pct_boruta', pct_pi', pct_bsfoa_tree', pct_bsfoa_forest', ...
+    'VariableNames', {'Caracteristica', 'RFE_Pct', 'Boruta_Pct', 'PermImportance_Pct', 'BSFOA_Tree_Pct', 'BSFOA_Forest_Pct'});
 
-% Ordenar por la característica que más seleccionó BSFOA para ver relevancia
-TablaComparativa = sortrows(TablaComparativa, 'BSFOA_Pct', 'descend');
-
+% Ordenar basándonos en los resultados del Mini-Forest (o el de Árbol si prefieres)
+TablaComparativa = sortrows(TablaComparativa, 'BSFOA_Forest_Pct', 'descend');
 disp(TablaComparativa);
 
-% 4. GUARDAR TODO ACTUALIZADO
+% 4. GUARDAR
 save('resultado_completo_con_bsfoa.mat');
-disp('Resultados guardados en resultado_completo_con_bsfoa.mat');
+disp('Resultados guardados exitosamente.');

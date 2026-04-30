@@ -1,15 +1,8 @@
 function cost = fobj(binX)
-% Función objetivo escalar con frente de Pareto INCLINADO hacia sparse
-% Compatible con BSFOA (retorna un solo escalar)
-%
-% IMPORTANTE: Ejecutar ANTES del algoritmo (una sola vez):
-%   global X; X = zscore(X);
-
-    global X Y
+    global X_train Y_train X_val Y_val nD
 
     % --- Sanidad del vector binario ---
     binX = logical(binX(:)');
-    nD   = size(X, 2);
 
     if length(binX) > nD
         binX = binX(1:nD);
@@ -23,19 +16,28 @@ function cost = fobj(binX)
         return;
     end
 
-    % --- Clasificación KNN con Leave-One-Out ---
-    X_sel = X(:, binX);
-    mdl   = fitcknn(X_sel, Y, 'NumNeighbors', 5, 'Leaveout', 'on');
-    f1    = kfoldLoss(mdl);             % error ∈ [0, 1]
+    % --- Selección de features activas ---
+    X_tr_sel = X_train(:, binX);
+    X_vl_sel = X_val(:, binX);
+
+    try
+        % Entrenar árbol con datos de entrenamiento
+        mdl = fitctree(X_tr_sel, Y_train, 'MaxNumSplits', 20);
+        
+        % Predecir con datos de validación
+        pred = predict(mdl, X_vl_sel);
+        f1   = mean(pred ~= Y_val); % Error de clasificación
+    catch
+        % Si falla (ej. por colinealidad extrema), asignamos peor error
+        f1 = 1; 
+    end
 
     % --- Fracción de features con penalización cuadrática ---
-    % La cuadratura INCLINA el frente: pocas features = penalización mucho menor
     feat_ratio = sum(binX) / nD;
-    f2 = feat_ratio^2;                  % ∈ [0, 1], presiona hacia soluciones sparse
+    f2 = feat_ratio*2;
 
     % --- Costo escalar agregado ---
-    alpha = 0.90;   % prioriza precisión
-    beta  = 0.10;   % penaliza features cuadráticamente
+    alpha = 0.97;
+    beta  = 0.03;
     cost  = alpha * f1 + beta * f2;
-
 end

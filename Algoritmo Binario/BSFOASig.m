@@ -1,4 +1,4 @@
-function [xposbest,fvalbest,Curve, Sf, Nf] = BSFOA(Npop,Max_it,lb,ub,nD,fobj)
+function [xposbest,fvalbest,Curve, Sf, Nf] = BSFOASig(Npop,Max_it,lb,ub,nD,fobj)
 % Starfish optimization algorithm (SFOA)
 % Created by Dr. Changting Zhong (Email: zhongct@hainanu.edu.cn)
 % Paper: Changting Zhong, Gang Li, Zeng Meng, Haijiang Li, Ali Riza Yildiz, Seyedali Mirjalili. 
