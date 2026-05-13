@@ -18,7 +18,7 @@ step_rfe = 1;
 % Contadores para guardar cuántas veces se seleccionó cada característica (inician en 0)
 cont_rfe = zeros(1, n_features);
 cont_boruta = zeros(1, n_features);
-cont_pi = zeros(1, n_features);
+cont_pi = zeros(1, n_features);aaaaaaaaaaaaaaaaaaaaaaaa
 
 disp(' ');
 disp('=== 2. INICIANDO CICLO DE SELECCIÓN DE CARACTERÍSTICAS ===');

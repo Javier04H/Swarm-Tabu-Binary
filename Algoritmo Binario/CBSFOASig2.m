@@ -83,7 +83,7 @@ while T <= Max_it
                 jp2 = ceil(nD * rand);
                 im = randperm(Npop);
                 rand1 = 2 * chaos_agente(i) - 1;
-                chaos_agente = pwlcm(chaos_agente(i), p_map);%para dar el siguiente valor caotico
+                chaos_agente(i) = pwlcm(chaos_agente(i), p_map);%para dar el siguiente valor caotico
                 rand2 = 2 * chaos_agente(i) - 1;
                 newX(i, jp2) = tEO * Xpos(i, jp2) + rand1 * (Xpos(im(1), jp2) - Xpos(i, jp2)) + rand2 * (Xpos(im(2), jp2) - Xpos(i, jp2));
                 if newX(i, jp2) > ub(jp2) || newX(i, jp2) < lb(jp2)

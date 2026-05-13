@@ -4,7 +4,6 @@ function [xposbest,fvalbest,Curve, Sf, Nf] = BSFOASig(Npop,Max_it,lb,ub,nD,fobj)
 % Paper: Changting Zhong, Gang Li, Zeng Meng, Haijiang Li, Ali Riza Yildiz, Seyedali Mirjalili. 
 % Starfish Optimization Algorithm (SFOA): A bio-inspired metaheuristic algorithm for global optimization compared with 100 optimizers
 % Neural Computing and Applications, 2025, 37: 3641-3683.
-
 %% Initialization
 GP=0.5;     % parameter 
 
