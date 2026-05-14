@@ -26,7 +26,12 @@ archivo_progreso = 'progreso_FeatureMain.mat';
 
 if isfile(archivo_progreso)
     fprintf('>> Archivo de progreso encontrado. Reanudando...\n');
-    load(archivo_progreso);   % carga: acum_*, tiempos_*, ultima_run, ultima_fold
+    load(archivo_progreso); % carga: acum_*, tiempos_*, ultima_run, ultima_fold
+
+    if ~exist('curvas_v1_total', 'var')
+        curvas_v1_total = zeros(N_runs, 10, Max_it); 
+        curvas_v2_total = zeros(N_runs, 10, Max_it);
+    end
 else
     % Acumuladores por ejecución (runs × features)
     acum_rfe            = zeros(N_runs, n_features);
@@ -41,6 +46,9 @@ else
     tiempos_pi             = zeros(N_runs, 1);
     tiempos_cbsfoa_forest  = zeros(N_runs, 1);
     tiempos_cbsfoa_forest2 = zeros(N_runs, 1);
+
+    curvas_v1_total = zeros(N_runs, 10, Max_it);
+    curvas_v2_total = zeros(N_runs, 10, Max_it);
 
     ultima_run  = 0;
     ultima_fold = 0;
@@ -148,23 +156,25 @@ fprintf('\n========================================\n');
             %% ── CBSFOA v1 ───────────────────────────────────────────────
             fprintf('    > CBSFOA v1 (Mini-Forest)... ');
             tic;
-            [~, ~, ~, Sf_forest1, ~] = CBSFOASig(Npop, Max_it, lb, ub, nD, @fobj_miniforest);
+            [~, ~, Curve_v1, Sf_forest1, ~] = CBSFOASig(Npop, Max_it, lb, ub, nD, @fobj_miniforest);
             t_cbsf1 = toc;
             support_forest1 = false(1, nD);
             support_forest1(Sf_forest1) = true;
             cont_cbsfoa_forest  = cont_cbsfoa_forest + support_forest1;
             t_cbsf1_run         = t_cbsf1_run + t_cbsf1;
+            curvas_v1_total(run, i,:)=Curve_v1;
             fprintf('%.2f s\n', t_cbsf1);
 
             %% ── CBSFOA v2 ───────────────────────────────────────────────
             fprintf('    > CBSFOA v2 (Mini-Forest + Chaos explore)... ');
             tic;
-            [~, ~, ~, Sf_forest2, ~] = CBSFOASig2(Npop, Max_it, lb, ub, nD, @fobj_miniforest);
+            [~, ~, Curve_v2, Sf_forest2, ~] = CBSFOASig2(Npop, Max_it, lb, ub, nD, @fobj_miniforest);
             t_cbsf2 = toc;
             support_forest2 = false(1, nD);
             support_forest2(Sf_forest2) = true;
             cont_cbsfoa_forest2  = cont_cbsfoa_forest2 + support_forest2;
             t_cbsf2_run          = t_cbsf2_run + t_cbsf2;
+            curvas_v2_total(run, i,:)=Curve_v2;
             fprintf('%.2f s\n', t_cbsf2);
 
             %% ── Guardado de seguridad tras cada fold ────────────────────
@@ -179,22 +189,13 @@ fprintf('\n========================================\n');
                  'cont_cbsfoa_forest', 'cont_cbsfoa_forest2', ...
                  't_rfe_run', 't_boruta_run', 't_pi_run', ...
                  't_cbsf1_run', 't_cbsf2_run', ...
+                 'curvas_v1_total','curvas_v2_total',...
                  'ultima_run', 'ultima_fold');
             fprintf('    [Fold %d asegurado en disco]\n', i);
 
         catch ME
             fprintf('\n  !! Error en Run %d, Fold %d: %s\n', run, i, ME.message);
             fprintf('     Guardando estado y deteniendo...\n');
-            save(archivo_progreso, ...
-                 'acum_rfe', 'acum_boruta', 'acum_pi', ...
-                 'acum_cbsfoa_forest', 'acum_cbsfoa_forest2', ...
-                 'tiempos_rfe', 'tiempos_boruta', 'tiempos_pi', ...
-                 'tiempos_cbsfoa_forest', 'tiempos_cbsfoa_forest2', ...
-                 'cont_rfe', 'cont_boruta', 'cont_pi', ...
-                 'cont_cbsfoa_forest', 'cont_cbsfoa_forest2', ...
-                 't_rfe_run', 't_boruta_run', 't_pi_run', ...
-                 't_cbsf1_run', 't_cbsf2_run', ...
-                 'ultima_run', 'ultima_fold');
             return;
         end
     end % ── fin KFold
