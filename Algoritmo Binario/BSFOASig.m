@@ -8,7 +8,8 @@ function [xposbest,fvalbest,Curve, Sf, Nf] = BSFOASig(Npop,Max_it,lb,ub,nD,fobj)
 GP=0.5;     % parameter 
 
 if size(ub,2) == 1
-    lb = lb*ones(1,nD); ub = ub*ones(1,nD);
+    lb = lb*ones(1,nD); 
+    ub = ub*ones(1,nD);
 end
 
 fvalbest = inf;
