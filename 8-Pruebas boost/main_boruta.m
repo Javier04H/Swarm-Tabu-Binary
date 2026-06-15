@@ -7,7 +7,7 @@ catch
 end
 
 if isempty(gcp('nocreate'))
-    parpool('local', 4);
+    parpool('local', 8);
 end
 %% Carga de datos
 Dataset2 = readtable("sleep_health_limpio.csv");
