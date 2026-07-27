@@ -10,14 +10,14 @@ if isempty(gcp('nocreate'))
     parpool('local', 8);
 end
 %% Carga de datos
-Dataset2 = readtable("sleep_health_limpio.csv");
+Dataset2 = readtable("heart_limpio.csv");
 x = Dataset2{:, 1:end-1};
 y = Dataset2{:, end};
 nombre_features = Dataset2.Properties.VariableNames(1:end-1);
 [n_muestras, n_features] = size(x);
 
 %% Parámetros del bucle externo y Validación
-N_runs = 1;     % Número de ejecuciones completas (4 para test)
+N_runs = 5;     % Número de ejecuciones completas (4 para test)
 num_folds = 10; % KFold original
 
 %% Sistema de guardado / reanudación (Exclusivo Boruta)

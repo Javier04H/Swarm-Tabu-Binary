@@ -1,0 +1,7 @@
+Row,Age,Sex,ChestPainType,RestingBP,Cholesterol,FastingBS,RestingECG,MaxHR,ExerciseAngina,Oldpeak,ST_Slope
+Boruta,1,1,1,1,1,1,1,1,1,1,1
+CBSFOA_Forest_1,0,1,1,0,1,0,0,0,0,0,1
+CBSFOA_Forest_2,0,1,1,0,1,0,0,0,0,0,1
+CBSFOA_Forest_3,0,1,1,0,1,0,0,0,0,0,1
+Perm_Importance_Pi,0,1,1,0,1,0,0,0,0,1,1
+RFE,0,1,1,0,0,0,0,0,0,1,1

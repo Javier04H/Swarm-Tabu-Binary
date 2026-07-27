@@ -1,11 +1,11 @@
 clc; close all; clear;
 
-%%% EVALUACIÓN DE FEATURE SELECTION MEDIANTE RELM %%%
+%%% EVALUACIÓN DE DATASETS ORIGINALES MEDIANTE RELM %%%
 
-% 1. Definir los archivos a procesar
-archivos_mat = {'CSV_LIMPIOS.mat', 'csv_limpio2.mat'};
+% 1. Definir los archivos CSV originales a procesar
+archivos_csv = {'sleep_health_limpio.csv', 'heart_limpio.csv'};
 
-N_runs = 10; % Cambiar a 5 para la validación final
+N_runs = 5; % Cambiar a 5 para la validación final
 if ~exist('ultima_run','var')
     ultima_run = 0;
 end
@@ -17,9 +17,9 @@ K = 10;
 
 resultados_finales = struct();
 
-% Bucle externo para procesar ambos archivos .mat
-for idx_arch = 1:length(archivos_mat)
-    archivo_actual = archivos_mat{idx_arch};
+% Bucle externo para procesar ambos archivos .csv
+for idx_arch = 1:length(archivos_csv)
+    archivo_actual = archivos_csv{idx_arch};
     
     fprintf('\n**************************************************\n');
     fprintf('       PROCESANDO ARCHIVO: %s\n', archivo_actual);
@@ -31,29 +31,28 @@ for idx_arch = 1:length(archivos_mat)
         continue;
     end
     
-    % Cargamos el archivo dentro de una estructura
-    data = load(archivo_actual);
-    y = data.y;
+    % 2. Cargar el dataset desde el CSV
+    % Leemos como tabla y lo convertimos a matriz numérica
+    tabla_datos = readtable(archivo_actual);
+    matriz_datos = table2array(tabla_datos);
+    
+    % Separar X (todas las columnas excepto la última) e Y (última columna)
+    X_original = matriz_datos(:, 1:end-1);
+    y = matriz_datos(:, end);
+    
+    % Mapear etiquetas reales a índices 1, 2, ..., N (evita errores en matriz de confusión)
     [~, ~, y] = unique(y);
-    num_classes = length(unique(y)); % Detectar automáticamente cuántas clases hay
+    num_classes = length(unique(y)); 
     
     % Extraemos el nombre limpio del archivo para guardar los resultados organizados
     [~, nombre_base, ~] = fileparts(archivo_actual);
     
-    % 2. Construcción dinámica de datasets (Evita errores si falta alguno en un .mat)
-    datasets = {};
-    dataset_names = {};
-    
-    if isfield(data, 'X_RELM_boruta'),  datasets{end+1} = data.X_RELM_boruta;  dataset_names{end+1} = 'Boruta';  end
-    if isfield(data, 'X_RELM_cbsfoa1'), datasets{end+1} = data.X_RELM_cbsfoa1; dataset_names{end+1} = 'CBSFOA1'; end
-    if isfield(data, 'X_RELM_cbsfoa2'), datasets{end+1} = data.X_RELM_cbsfoa2; dataset_names{end+1} = 'CBSFOA2'; end
-    if isfield(data, 'X_RELM_cbsfoa3'), datasets{end+1} = data.X_RELM_cbsfoa3; dataset_names{end+1} = 'CBSFOA3'; end
-    if isfield(data, 'X_RELM_rfe'),     datasets{end+1} = data.X_RELM_rfe;     dataset_names{end+1} = 'RFE';     end
-    if isfield(data, 'X_RELM_pi'),      datasets{end+1} = data.X_RELM_pi;      dataset_names{end+1} = 'PI';      end
-    
+    % Configuramos la evaluación para que corra una sola vez usando el dataset original
+    datasets = {X_original};
+    dataset_names = {'Original_Completo'};
     num_datasets = length(datasets);
     
-    % Bucle interno para evaluar cada algoritmo en el archivo actual
+    % Bucle interno (en este caso solo iterará 1 vez por CSV)
     for d = 1:num_datasets
         fprintf('\n==================================================\n');
         fprintf('Evaluando Dataset: %s (Archivo: %s)\n', dataset_names{d}, archivo_actual);
@@ -82,7 +81,7 @@ for idx_arch = 1:length(archivos_mat)
                 Y_test  = y(testIdx, :);
                 
                 % ══════════════════════════════════════════════════════════
-                % NUEVO: NORMALIZACIÓN INTERNA MIN-MAX (RANGO 0-1) POR FOLD
+                % NORMALIZACIÓN INTERNA MIN-MAX (RANGO 0-1) POR FOLD
                 % ══════════════════════════════════════════════════════════
                 % Calculamos los límites usando ÚNICAMENTE los datos de Train
                 min_val = min(X_train, [], 1);
@@ -164,7 +163,7 @@ for idx_arch = 1:length(archivos_mat)
         fprintf('  > G-Mean Test  (Media ± Std): %.4f ± %.4f\n', best_gmean, std_gmean(best_n_idx, best_c_idx));
         fprintf('  > Accuracy Test(Media ± Std): %.4f ± %.4f\n', best_acc, std_acc(best_n_idx, best_c_idx));
         
-        % Guardar en estructura organizando por Archivo -> Algoritmo
+        % Guardar en estructura organizando por Archivo -> Algoritmo (Original)
         resultados_finales.(nombre_base).(dataset_names{d}).mean_acc = mean_acc;
         resultados_finales.(nombre_base).(dataset_names{d}).mean_mcc = mean_mcc;
         resultados_finales.(nombre_base).(dataset_names{d}).mean_gmean = mean_gmean;
