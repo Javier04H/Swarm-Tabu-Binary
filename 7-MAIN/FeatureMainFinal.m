@@ -31,6 +31,7 @@ if isfile(archivo_progreso)
     fprintf('>> Archivo de progreso encontrado. Reanudando...\n');
     load(archivo_progreso); 
     if ~exist('curvas_v1_total', 'var')
+        curvas_original_total = zeros(N_runs, K_folds, Max_it);
         curvas_v1_total = zeros(N_runs, K_folds, Max_it); 
         curvas_v2_total = zeros(N_runs, K_folds, Max_it);
         curvas_v3_total = zeros(N_runs, K_folds, Max_it);
@@ -39,6 +40,7 @@ else
     % Acumuladores por ejecución (runs × features)
     acum_rfe            = zeros(N_runs, n_features);
     acum_pi             = zeros(N_runs, n_features);
+    acum_sfoa_original_total = zeros(N_runs, n_features);
     acum_cbsfoa_forest  = zeros(N_runs, n_features);
     acum_cbsfoa_forest2 = zeros(N_runs, n_features);
     acum_cbsfoa_forest3 = zeros(N_runs, n_features);
@@ -46,13 +48,16 @@ else
     % Tiempos totales por algoritmo y ejecución (runs × 1)
     tiempos_rfe            = zeros(N_runs, 1);
     tiempos_pi             = zeros(N_runs, 1);
+    tiempos_sfoa_original_total = zeros(N_runs,1);
     tiempos_cbsfoa_forest  = zeros(N_runs, 1);
     tiempos_cbsfoa_forest2 = zeros(N_runs, 1);
     tiempos_cbsfoa_forest3 = zeros(N_runs, 1);
     
+    curvas_original_total = zeros(N_runs, K_folds, Max_it);
     curvas_v1_total = zeros(N_runs, K_folds, Max_it);
     curvas_v2_total = zeros(N_runs, K_folds, Max_it);
     curvas_v3_total = zeros(N_runs, K_folds, Max_it);
+
     
     ultima_run  = 0;
     ultima_fold = 0;
@@ -81,12 +86,14 @@ for run = (ultima_run + 1) : N_runs
         
         cont_rfe            = zeros(1, n_features);
         cont_pi             = zeros(1, n_features);
+        cont_sfoa_original  = zeros(1, nD);
         cont_cbsfoa_forest  = zeros(1, nD);
         cont_cbsfoa_forest2 = zeros(1, nD);
         cont_cbsfoa_forest3 = zeros(1, nD);
         
         t_rfe_run   = 0;  
         t_pi_run = 0;
+        t_sfoa_run = 0;
         t_cbsf1_run = 0;  
         t_cbsf2_run  = 0;
         t_cbsf3_run  = 0;
@@ -128,6 +135,17 @@ for run = (ultima_run + 1) : N_runs
             cont_pi   = cont_pi + support_pi;
             t_pi_run  = t_pi_run + t_pi;
             fprintf('%.2f s\n', t_pi);
+            %% ── SFOA OR ───────────────────────────────────────────────
+
+            fprintf('    > SFOA Orginal (Mini-Forest)... ');
+            tic;
+            [~, ~, Curve_Or, Sf_Or, ~] = BSFOASig(Npop, Max_it, lb, ub, nD, @fobj_miniforest);
+            t_sfoa_or = toc;
+            support_Original = false(1, nD); support_Original(Sf_Or) = true;
+            cont_sfoa_original  = cont_sfoa_original + support_Original;
+            t_sfoa_run        = t_sfoa_run + t_sfoa_or;
+            curvas_original_total(run, i,:) = Curve_Or;
+            fprintf('%.2f s\n', t_sfoa_or);
             
             %% ── CBSFOA v1 ───────────────────────────────────────────────
             fprintf('    > CBSFOA v1 (Mini-Forest)... ');
@@ -165,14 +183,14 @@ for run = (ultima_run + 1) : N_runs
             %% ── Guardado de seguridad tras cada fold ────────────────────
             ultima_fold = i;
             save(archivo_progreso, 'acum_rfe', 'acum_pi', ...
-                 'acum_cbsfoa_forest', 'acum_cbsfoa_forest2','acum_cbsfoa_forest3', ...
+                 'acum_sfoa_original_total', 'acum_cbsfoa_forest', 'acum_cbsfoa_forest2','acum_cbsfoa_forest3', ...
                  'tiempos_rfe', 'tiempos_pi', ...
-                 'tiempos_cbsfoa_forest', 'tiempos_cbsfoa_forest2', 'tiempos_cbsfoa_forest3', ...
+                 'tiempos_sfoa_original_total', 'tiempos_cbsfoa_forest', 'tiempos_cbsfoa_forest2', 'tiempos_cbsfoa_forest3', ...
                  'cont_rfe', 'cont_pi', ...
-                 'cont_cbsfoa_forest', 'cont_cbsfoa_forest2','cont_cbsfoa_forest3', ...
-                 't_rfe_run', 't_pi_run', ...
+                 'cont_sfoa_original', 'cont_cbsfoa_forest', 'cont_cbsfoa_forest2','cont_cbsfoa_forest3', ...
+                 't_rfe_run', 't_pi_run', 't_sfoa_run', ...
                  't_cbsf1_run', 't_cbsf2_run', 't_cbsf3_run', ...
-                 'curvas_v1_total','curvas_v2_total','curvas_v3_total', 'ultima_run', 'ultima_fold');
+                 'curvas_original_total', 'curvas_v1_total','curvas_v2_total','curvas_v3_total', 'ultima_run', 'ultima_fold');
             fprintf('    [Fold %d asegurado en disco]\n', i);
         catch ME
             fprintf('\n  !! Error en Run %d, Fold %d: %s\n', run, i, ME.message);
@@ -181,15 +199,17 @@ for run = (ultima_run + 1) : N_runs
         end
     end % ── fin KFold
     
-    %% Almacenar resultados del run completo
+%% Almacenar resultados del run completo
     acum_rfe(run, :)            = cont_rfe;
     acum_pi(run, :)             = cont_pi;
+    acum_sfoa_original_total(run, :) = cont_sfoa_original;
     acum_cbsfoa_forest(run, :)  = cont_cbsfoa_forest;
     acum_cbsfoa_forest2(run, :) = cont_cbsfoa_forest2;
     acum_cbsfoa_forest3(run, :) = cont_cbsfoa_forest3;
     
     tiempos_rfe(run)            = t_rfe_run;
     tiempos_pi(run)             = t_pi_run;
+    tiempos_sfoa_original_total(run) = t_sfoa_run;
     tiempos_cbsfoa_forest(run)  = t_cbsf1_run;
     tiempos_cbsfoa_forest2(run) = t_cbsf2_run;
     tiempos_cbsfoa_forest3(run) = t_cbsf3_run;
@@ -198,22 +218,23 @@ for run = (ultima_run + 1) : N_runs
     ultima_fold = 0; 
     
     save(archivo_progreso, 'acum_rfe', 'acum_pi', ...
-         'acum_cbsfoa_forest', 'acum_cbsfoa_forest2', 'acum_cbsfoa_forest3',...
+         'acum_sfoa_original_total', 'acum_cbsfoa_forest', 'acum_cbsfoa_forest2', 'acum_cbsfoa_forest3',...
          'tiempos_rfe', 'tiempos_pi', ...
-         'tiempos_cbsfoa_forest', 'tiempos_cbsfoa_forest2','tiempos_cbsfoa_forest3', ...
+         'tiempos_sfoa_original_total', 'tiempos_cbsfoa_forest', 'tiempos_cbsfoa_forest2','tiempos_cbsfoa_forest3', ...
          'cont_rfe', 'cont_pi', ...
-         'cont_cbsfoa_forest', 'cont_cbsfoa_forest2','cont_cbsfoa_forest3', ...
-         't_rfe_run', 't_pi_run', ...
-         't_cbsf1_run', 't_cbsf2_run', 't_cbsf3_run','curvas_v1_total','curvas_v2_total','curvas_v3_total', ...
+         'cont_sfoa_original', 'cont_cbsfoa_forest', 'cont_cbsfoa_forest2','cont_cbsfoa_forest3', ...
+         't_rfe_run', 't_pi_run', 't_sfoa_run', ...
+         't_cbsf1_run', 't_cbsf2_run', 't_cbsf3_run', ...
+         'curvas_original_total', 'curvas_v1_total','curvas_v2_total','curvas_v3_total', ...
          'ultima_run', 'ultima_fold');
     fprintf('\n  [Run %d completo y guardado]\n', run);
 end % ── fin bucle N_runs
-
 %% ══════════════════════════════════════════════════════════════════════════
 %%  PROMEDIOS FINALES Y PREPARACIÓN DE DATOS PARA GRÁFICOS
 %% ══════════════════════════════════════════════════════════════════════════
 media_rfe            = mean(acum_rfe,            1);
 media_pi             = mean(acum_pi,             1);
+media_sfoa_original  = mean(acum_sfoa_original_total, 1);
 media_cbsfoa_forest  = mean(acum_cbsfoa_forest,  1);
 media_cbsfoa_forest2 = mean(acum_cbsfoa_forest2, 1);
 media_cbsfoa_forest3 = mean(acum_cbsfoa_forest3, 1);
@@ -222,28 +243,31 @@ umbral = c.NumTestSets * 0.5;
 
 sel_rfe            = media_rfe            >= umbral;
 sel_pi             = media_pi             >= umbral;
+sel_sfoa_original  = media_sfoa_original  >= umbral;
 sel_cbsfoa_forest  = media_cbsfoa_forest  >= umbral;
 sel_cbsfoa_forest2 = media_cbsfoa_forest2 >= umbral;
 sel_cbsfoa_forest3 = media_cbsfoa_forest3 >= umbral;
 
-n_sel_rfe    = sum(sel_rfe);
-n_sel_pi     = sum(sel_pi);
-n_sel_cbsf1  = sum(sel_cbsfoa_forest);
-n_sel_cbsf2  = sum(sel_cbsfoa_forest2);
-n_sel_cbsf3  = sum(sel_cbsfoa_forest3);
+n_sel_rfe          = sum(sel_rfe);
+n_sel_pi           = sum(sel_pi);
+n_sel_sfoa_original= sum(sel_sfoa_original);
+n_sel_cbsf1        = sum(sel_cbsfoa_forest);
+n_sel_cbsf2        = sum(sel_cbsfoa_forest2);
+n_sel_cbsf3        = sum(sel_cbsfoa_forest3);
 
-% Extraer datos para los gráficos CBSFOA
+% Extraer datos para los gráficos CBSFOA y Original
+curva_promedio_or = squeeze(mean(mean(curvas_original_total, 1), 2));
 curva_promedio_v1 = squeeze(mean(mean(curvas_v1_total, 1), 2));
 curva_promedio_v2 = squeeze(mean(mean(curvas_v2_total, 1), 2));
 curva_promedio_v3 = squeeze(mean(mean(curvas_v3_total, 1), 2));
 
+fitness_final_or = reshape(curvas_original_total(:, :, end), 1, []);
 fitness_final_v1 = reshape(curvas_v1_total(:, :, end), 1, []);
 fitness_final_v2 = reshape(curvas_v2_total(:, :, end), 1, []);
 fitness_final_v3 = reshape(curvas_v3_total(:, :, end), 1, []);
 
 % Tiempo promedio dividido entre K_folds exclusivo para la figura 3
-t_medios_cbsf = [mean(tiempos_cbsfoa_forest), mean(tiempos_cbsfoa_forest2), mean(tiempos_cbsfoa_forest3)] / K_folds;
-
+t_medios_cbsf = [mean(tiempos_sfoa_original_total), mean(tiempos_cbsfoa_forest), mean(tiempos_cbsfoa_forest2), mean(tiempos_cbsfoa_forest3)] / K_folds;
 %% ══════════════════════════════════════════════════════════════════════════
 %%  TABLA DE REDUCCIÓN DE CARACTERÍSTICAS (CONSOLA)
 %% ══════════════════════════════════════════════════════════════════════════
@@ -252,8 +276,8 @@ fprintf('       TABLA DE REDUCCIÓN DE CARACTERÍSTICAS\n');
 fprintf('======================================================\n');
 fprintf('%-25s %10s %10s %10s\n', 'Algoritmo', 'Features', 'Reduccion', 'Reduccion%');
 fprintf('------------------------------------------------------\n');
-algoritmos = {'RFE', 'Perm. Importance', 'CBSFOA v1', 'CBSFOA v2', 'CBSFOA v3'};
-n_seleccionadas = [n_sel_rfe, n_sel_pi, n_sel_cbsf1, n_sel_cbsf2, n_sel_cbsf3];
+algoritmos = {'RFE', 'Perm. Importance', 'SFOA Original', 'CBSFOA v1', 'CBSFOA v2', 'CBSFOA v3'};
+n_seleccionadas = [n_sel_rfe, n_sel_pi, n_sel_sfoa_original, n_sel_cbsf1, n_sel_cbsf2, n_sel_cbsf3];
 
 for k = 1:length(algoritmos)
     reduccion   = n_features - n_seleccionadas(k);
@@ -267,7 +291,7 @@ fprintf('======================================================\n\n');
 %% ══════════════════════════════════════════════════════════════════════════
 %%  TABLA DE TIEMPOS PROMEDIO (CONSOLA)
 %% ══════════════════════════════════════════════════════════════════════════
-t_medios_global = [mean(tiempos_rfe), mean(tiempos_pi), ...
+t_medios_global = [mean(tiempos_rfe), mean(tiempos_pi), mean(tiempos_sfoa_original_total), ...
             mean(tiempos_cbsfoa_forest), mean(tiempos_cbsfoa_forest2), mean(tiempos_cbsfoa_forest3)];
             
 fprintf('======================================================\n');
@@ -289,20 +313,21 @@ end
 
 % 1. Gráfico de Curvas de Convergencia Promedio
 fig1 = figure('Name', 'Convergencia', 'Color', 'w', 'Position', [100 100 700 500]);
-plot(1:Max_it, curva_promedio_v1, '-o', 'LineWidth', 1.5, 'MarkerIndices', 1:5:Max_it); hold on;
+plot(1:Max_it, curva_promedio_or, '-d', 'LineWidth', 1.5, 'MarkerIndices', 1:5:Max_it, 'Color', [0.5 0.5 0.5]); hold on;
+plot(1:Max_it, curva_promedio_v1, '-o', 'LineWidth', 1.5, 'MarkerIndices', 1:5:Max_it);
 plot(1:Max_it, curva_promedio_v2, '-s', 'LineWidth', 1.5, 'MarkerIndices', 1:5:Max_it);
 plot(1:Max_it, curva_promedio_v3, '-^', 'LineWidth', 1.5, 'MarkerIndices', 1:5:Max_it);
 grid on; box on;
 xlabel('Iteraciones', 'FontWeight', 'bold');
 ylabel('Fitness (Tasa de Error Global Promedio)', 'FontWeight', 'bold');
-legend('CBSFOA v1 (Estándar)', 'CBSFOA v2 (Caos Init+Expl)', 'CBSFOA v3 (Caos Expl)', 'Location', 'best');
+legend('SFOA Original', 'CBSFOA v1 (Estándar)', 'CBSFOA v2 (Caos Init+Expl)', 'CBSFOA v3 (Caos Expl)', 'Location', 'best');
 title('Curvas de Convergencia Promedio (K-Fold x Runs)', 'FontSize', 12);
 print(fig1, fullfile(carpeta_imagenes, 'fig_curva_convergencia_heart.eps'), '-depsc');
 
 % 2. Gráfico de Boxplot del Fitness Final (Robustez / Estabilidad)
 fig2 = figure('Name', 'Robustez (Boxplot)', 'Color', 'w', 'Position', [820 100 600 500]);
-data_boxplot = [fitness_final_v1', fitness_final_v2', fitness_final_v3'];
-boxplot(data_boxplot, 'Labels', {'CBSFOA v1', 'CBSFOA v2', 'CBSFOA v3'});
+data_boxplot = [fitness_final_or', fitness_final_v1', fitness_final_v2', fitness_final_v3'];
+boxplot(data_boxplot, 'Labels', {'SFOA Org.', 'CBSFOA v1', 'CBSFOA v2', 'CBSFOA v3'});
 ylabel('Valor de Fitness Final', 'FontWeight', 'bold');
 title('Distribución del Fitness Final (Evaluando Estabilidad)', 'FontSize', 12);
 grid on;
@@ -311,10 +336,11 @@ print(fig2, fullfile(carpeta_imagenes, 'fig_boxplot_robustez_heart.eps'), '-deps
 % 3. Gráfico de Barras: Comparación de Tiempos (Costo Computacional por Fold)
 fig3 = figure('Name', 'Tiempos de Ejecución', 'Color', 'w', 'Position', [100 650 450 400]);
 b = bar(t_medios_cbsf, 'FaceColor', 'flat');
-b.CData(1,:) = [0.2 0.6 0.8]; 
-b.CData(2,:) = [0.8 0.2 0.2];
-b.CData(3,:) = [0.2 0.8 0.2];
-set(gca, 'XTickLabel', {'v1', 'v2', 'v3'});
+b.CData(1,:) = [0.5 0.5 0.5]; 
+b.CData(2,:) = [0.2 0.6 0.8]; 
+b.CData(3,:) = [0.8 0.2 0.2];
+b.CData(4,:) = [0.2 0.8 0.2];
+set(gca, 'XTickLabel', {'Org.', 'v1', 'v2', 'v3'});
 ylabel('Tiempo Promedio por Fold (s)', 'FontWeight', 'bold');
 title('Costo Computacional (Variantes CBSFOA)', 'FontSize', 12);
 grid on;
@@ -322,29 +348,29 @@ print(fig3, fullfile(carpeta_imagenes, 'fig_costo_computacional_heart.eps'), '-d
 
 % 4. Gráfico de Barras: Características Seleccionadas (Reducción)
 fig4 = figure('Name', 'Seleccion Features', 'Color', 'w', 'Position', [580 650 450 400]);
-b2 = bar([n_sel_cbsf1, n_sel_cbsf2, n_sel_cbsf3], 'FaceColor', 'flat');
-b2.CData(1,:) = [0.2 0.6 0.8];
-b2.CData(2,:) = [0.8 0.2 0.2];
-b2.CData(3,:) = [0.2 0.8 0.2];
-set(gca, 'XTickLabel', {'v1', 'v2', 'v3'});
+b2 = bar([n_sel_sfoa_original, n_sel_cbsf1, n_sel_cbsf2, n_sel_cbsf3], 'FaceColor', 'flat');
+b2.CData(1,:) = [0.5 0.5 0.5];
+b2.CData(2,:) = [0.2 0.6 0.8];
+b2.CData(3,:) = [0.8 0.2 0.2];
+b2.CData(4,:) = [0.2 0.8 0.2];
+set(gca, 'XTickLabel', {'Org.', 'v1', 'v2', 'v3'});
 ylabel('Cantidad de Características Retenidas', 'FontWeight', 'bold');
 title('Reducción de Dimensionalidad (Variantes)', 'FontSize', 12);
 grid on;
 print(fig4, fullfile(carpeta_imagenes, 'fig_reduccion_features_heart.eps'), '-depsc');
-
 %% ══════════════════════════════════════════════════════════════════════════
 %%  GUARDADO FINAL COMPLETO (.MAT)
 %% ══════════════════════════════════════════════════════════════════════════
 save('ComparacionFeature_Final_DATA2.mat', ...
      'acum_rfe', 'acum_pi', ...
-     'acum_cbsfoa_forest', 'acum_cbsfoa_forest2', 'acum_cbsfoa_forest3', ... 
+     'acum_sfoa_original_total', 'acum_cbsfoa_forest', 'acum_cbsfoa_forest2', 'acum_cbsfoa_forest3', ... 
      'media_rfe', 'media_pi', ...
-     'media_cbsfoa_forest', 'media_cbsfoa_forest2', 'media_cbsfoa_forest3', ... 
+     'media_sfoa_original', 'media_cbsfoa_forest', 'media_cbsfoa_forest2', 'media_cbsfoa_forest3', ... 
      'sel_rfe', 'sel_pi', ...
-     'sel_cbsfoa_forest', 'sel_cbsfoa_forest2', 'sel_cbsfoa_forest3', ...
+     'sel_sfoa_original', 'sel_cbsfoa_forest', 'sel_cbsfoa_forest2', 'sel_cbsfoa_forest3', ...
      'tiempos_rfe', 'tiempos_pi', ...
-     'tiempos_cbsfoa_forest', 'tiempos_cbsfoa_forest2','tiempos_cbsfoa_forest3', ...
-     'curvas_v1_total','curvas_v2_total','curvas_v3_total',...
+     'tiempos_sfoa_original_total', 'tiempos_cbsfoa_forest', 'tiempos_cbsfoa_forest2','tiempos_cbsfoa_forest3', ...
+     'curvas_original_total', 'curvas_v1_total','curvas_v2_total','curvas_v3_total',...
      't_medios_global', 't_medios_cbsf', 'nombre_features', 'n_features', 'N_runs', 'K_folds', 'Max_it', 'Npop');
 
 fprintf('>> Resultados finales guardados en ComparacionFeature_Final_DATA2.mat\n');

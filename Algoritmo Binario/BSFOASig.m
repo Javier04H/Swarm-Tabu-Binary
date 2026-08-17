@@ -44,7 +44,7 @@ while T <= Max_it
                     else
                         newX(i,jp1(j)) = Xpos(i,jp1(j)) - pm*(xposbest(jp1(j))-Xpos(i,jp1(j)))*sin(theta);
                     end
-                    if newX(i,jp1(j))>ub(jp1(j)) || newX(i,jp1(j))<lb(jp1(j))
+                    if newX(i,jp1(j))>ub(jp1(j)) | newX(i,jp1(j))<lb(jp1(j))
                         newX(i,jp1(j)) = Xpos(i,jp1(j));
                     end
                 end
@@ -55,7 +55,7 @@ while T <= Max_it
                 rand1 = 2*rand-1;
                 rand2 = 2*rand-1;
                 newX(i,jp2) = tEO*Xpos(i,jp2) + rand1*(Xpos(im(1),jp2)-Xpos(i,jp2))+rand2*(Xpos(im(2),jp2)-Xpos(i,jp2));
-                if newX(i,jp2)>ub(jp2) || newX(i,jp2)<lb(jp2)
+                if newX(i,jp2)>ub(jp2) | newX(i,jp2)<lb(jp2)
                     newX(i,jp2) = Xpos(i,jp2);
                 end  
             end
